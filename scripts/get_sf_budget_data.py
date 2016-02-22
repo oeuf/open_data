@@ -7,6 +7,7 @@ from socrata import grabber
 if __name__ == '__main__':
     url = 'data.sfgov.org'
     budgets_id = 'xdgd-c79v'
+    spending_id = 'bpnb-jwfb'
     secrets_file = '../secrets.yaml'
     if os.path.isfile(secrets_file):
         with open(secrets_file, 'rb') as f:
@@ -16,3 +17,4 @@ if __name__ == '__main__':
         app_token = None
     client = grabber.get_client(url, app_token)
     budget_data = grabber.get_data(client, budgets_id)
+    spending_data = grabber.get_data(client, spending_id)

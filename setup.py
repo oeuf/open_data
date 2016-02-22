@@ -8,7 +8,9 @@ setup(
     url='https://github.com/oeuf/open_data',
     description='scratchpaad code for accessing data on socrata',
     install_requires=[
-        'sodapy',
         'gevent',
+        'PyYAML',
+        'retrying',
+        'sodapy',
     ],
 )

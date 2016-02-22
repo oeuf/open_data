@@ -1,2 +1,4 @@
-gevent
-sodapy
+gevent==1.0.2
+PyYAML==3.11
+retrying==1.3.3
+sodapy=1.2.0

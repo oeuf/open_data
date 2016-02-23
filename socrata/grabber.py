@@ -1,9 +1,11 @@
 from gevent import monkey
 monkey.patch_all()
 
-import itertools
-
 import gevent.pool
+
+import itertools
+import unicodecsv as csv
+
 import retrying
 import sodapy
 
@@ -27,14 +29,16 @@ def get_data(client, dataset_id, min_offset=0, max_offset=1000000, limit=50000, 
     return list(itertools.chain.from_iterable([thread.value for thread in threads if thread.value]))
 
 
-def page_through_data(client, dataset_id, limit=50000):
-    result = []
+def to_csv(client, dataset_id, filename, limit=50000):
     offset = 0
-    keep_working = True
-    while keep_working:
-        print(offset)
-        tmp_result = _get_data(client, dataset_id, offset, limit)
-        offset += limit
-        if tmp_result is None:
-            return result
-        result.extend(tmp_result)
+    with open(filename, 'wb') as f:
+        while True:
+            result = _get_data(client, dataset_id, offset, limit)
+            if result is None:
+                break
+            if offset == 0:
+                keys = result[0].keys()
+                writer = csv.DictWriter(f, keys)
+                writer.writeheader()
+            writer.writerows(result)
+            offset += limit

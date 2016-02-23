@@ -25,3 +25,16 @@ def get_data(client, dataset_id, min_offset=0, max_offset=1000000, limit=50000, 
     threads = [pool.spawn(_get_data, client, dataset_id, offset, limit) for offset in offsets]
     pool.join()
     return list(itertools.chain.from_iterable([thread.value for thread in threads if thread.value]))
+
+
+def page_through_data(client, dataset_id, limit=50000):
+    result = []
+    offset = 0
+    keep_working = True
+    while keep_working:
+        print(offset)
+        tmp_result = _get_data(client, dataset_id, offset, limit)
+        offset += limit
+        if tmp_result is None:
+            return result
+        result.extend(tmp_result)

@@ -14,7 +14,8 @@ def get_client(url, app_token):
     return sodapy.Socrata(url, app_token)
 
 
-@retrying.retry(stop_max_attempt_number=5, wait_exponential_multiplier=1000, wait_exponential_max=10000)
+@retrying.retry(
+    stop_max_attempt_number=5, wait_exponential_multiplier=1000, wait_exponential_max=10000)
 def _get_data(client, dataset_id, offset, limit, order_by=':id'):
     tmp = client.get(dataset_id, offset=offset, limit=limit, order=order_by)
     if len(tmp):
@@ -38,6 +39,11 @@ def to_csv(client, dataset_id, filename, limit=50000):
                 break
             if offset == 0:
                 keys = result[0].keys()
+                # ugly hack to deal with inconsistent naming in API data
+                if dataset_id == 'vw6y-z8j6':  # 311 data
+                    keys.extend(['media_url', 'status_notes'])
+                elif dataset_id == '5cei-gny5':  # vendor data
+                    keys.append('constraints_date')
                 writer = csv.DictWriter(f, keys)
                 writer.writeheader()
             writer.writerows(result)

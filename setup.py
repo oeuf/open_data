@@ -6,11 +6,10 @@ setup(
     author='Nick Gustafson',
     author_email='njgustafson@gmail.com',
     url='https://github.com/oeuf/open_data',
-    description='scratchpaad code for accessing data on socrata',
+    description='scratchpad code for accessing data on data.sfgov.org',
     install_requires=[
         'gevent',
         'PyYAML',
-        'retrying',
         'sodapy',
     ],
 )

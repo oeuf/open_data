@@ -1,50 +1,65 @@
-from gevent import monkey
-monkey.patch_all()
-
-import gevent.pool
-
-import itertools
 import unicodecsv as csv
 
-import retrying
 import sodapy
 
 
 def get_client(url, app_token):
+    """Creates an instance of sodapy.Socrata for interacting with the open data API."""
     return sodapy.Socrata(url, app_token)
 
 
-@retrying.retry(
-    stop_max_attempt_number=5, wait_exponential_multiplier=1000, wait_exponential_max=10000)
 def _get_data(client, dataset_id, offset, limit, order_by=':id'):
+    """Pulls a subset of data from the specified dataset_id
+
+    Args:
+        client: an instance of sodapy.Socrata (see get_client())
+        dataset_id: String identifier for dataset. (see https://data.sfgov.org/)
+        offset: Int offset parameter for query
+        limit: Int number of records to fetch from query (max 50000 per Socrata)
+        order_by: sort key for query
+
+    Returns:
+        list of API objects
+    """
+
     tmp = client.get(dataset_id, offset=offset, limit=limit, order=order_by)
     if len(tmp):
         return tmp
 
 
-def get_data(client, dataset_id, min_offset=0, max_offset=1000000, limit=50000, pool_size=5):
-    offsets = xrange(min_offset, max_offset, limit)
-    pool = gevent.pool.Pool(pool_size)
-    threads = [pool.spawn(_get_data, client, dataset_id, offset, limit) for offset in offsets]
-    pool.join()
-    return list(itertools.chain.from_iterable([thread.value for thread in threads if thread.value]))
+class DataGrabber(object):
+    def __init__(self, client, dataset_id, offset=0, add_header=True):
+        """Class to page through API data and write to CSV.
 
+        Args:
+            client: an instance of sodapy.Socrata (see get_client())
+            dataset_id: String identifier for dataset. (see https://data.sfgov.org/)
+            offset: Int offset parameter for query
+            add_header: Boolean indicating whether or not to add a header line to outputfil
+        """
 
-def to_csv(client, dataset_id, filename, limit=50000):
-    offset = 0
-    with open(filename, 'wb') as f:
-        while True:
-            result = _get_data(client, dataset_id, offset, limit)
-            if result is None:
-                break
-            if offset == 0:
+        self.client = client
+        self.dataset_id = dataset_id
+        self.offset = offset
+        self.add_header = add_header
+
+    def to_csv(self, filename, limit=50000):
+        with open(filename, 'a') as f:
+            while True:
+                result = _get_data(self.client, self.dataset_id, self.offset, limit)
+                if result is None:
+                    return
                 keys = result[0].keys()
-                # ugly hack to deal with inconsistent naming in API data
-                if dataset_id == 'vw6y-z8j6':  # 311 data
+                # ugly hacks to deal with inconsistent field names in API data.Sigh.
+                if self.dataset_id == 'vw6y-z8j6':  # 311 data
                     keys.extend(['media_url', 'status_notes'])
-                elif dataset_id == '5cei-gny5':  # vendor data
+                elif self.dataset_id == '5cei-gny5':  # vendor data
                     keys.append('constraints_date')
+                elif self.dataset_id == 'yitu-d5am':  # vendor data
+                    keys.extend(['distributor', 'fun_facts'])
                 writer = csv.DictWriter(f, keys)
-                writer.writeheader()
-            writer.writerows(result)
-            offset += limit
+                if self.add_header:
+                    writer.writeheader()
+                    self.add_header = False
+                writer.writerows(result)
+                self.offset += limit
